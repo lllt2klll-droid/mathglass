@@ -20,6 +20,7 @@ import { useApi } from "@/lib/use-api";
 import { AI_PROVIDER_PRESETS, detectPreset } from "@/config/ai-presets";
 import { cn, formatBytes } from "@/lib/utils";
 import type { ProviderPublicConfig, ProviderTestResult } from "@/types/ai";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -504,15 +505,29 @@ function AiProviderTab({
               ) : null}
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="ai-api-key">API Key {provider?.hasApiKey ? "(đã lưu — để trống nếu không đổi)" : ""}</Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="ai-api-key">API Key</Label>
+                {provider?.hasApiKey ? (
+                  <Badge tone="success">
+                    <CheckCircle2 className="size-3" /> Đã lưu an toàn
+                  </Badge>
+                ) : (
+                  <Badge tone="warning">Chưa có key</Badge>
+                )}
+              </div>
               <Input
                 id="ai-api-key"
                 type="password"
                 value={apiKey}
                 onChange={(event) => setApiKey(event.target.value)}
-                placeholder={provider?.hasApiKey ? "••••••••••••" : "AIza... / sk-..."}
+                placeholder={provider?.hasApiKey ? "Để trống = giữ key hiện tại" : "AIza... / sk-..."}
                 autoComplete="off"
               />
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                {provider?.hasApiKey
+                  ? "Key đã được mã hóa và lưu trên máy chủ — vì lý do bảo mật, hệ thống không hiển thị lại key đã lưu. Ô trống nghĩa là giữ nguyên key cũ; chỉ nhập key mới khi muốn thay thế."
+                  : "Key sẽ được mã hóa (AES-256-GCM) trước khi lưu và không bao giờ hiển thị lại."}
+              </p>
             </div>
           </div>
 

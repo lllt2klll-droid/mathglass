@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
 import { useApi } from "@/lib/use-api";
+import { AI_PROVIDER_PRESETS, detectPreset } from "@/config/ai-presets";
 import { cn, formatBytes } from "@/lib/utils";
 import type { ProviderPublicConfig, ProviderTestResult } from "@/types/ai";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/controls";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/controls";
 import { useToast } from "@/components/ui/toast";
@@ -272,6 +280,7 @@ function AiProviderTab({
   const [model, setModel] = React.useState("");
   const [apiKey, setApiKey] = React.useState("");
   const [enabled, setEnabled] = React.useState(false);
+  const [presetId, setPresetId] = React.useState<string>("custom");
   const [saving, setSaving] = React.useState(false);
   const [testing, setTesting] = React.useState(false);
   const [testResult, setTestResult] = React.useState<ProviderTestResult | null>(null);
@@ -284,8 +293,20 @@ function AiProviderTab({
       setBaseUrl(data.provider.baseUrl);
       setModel(data.provider.model);
       setEnabled(data.provider.enabled);
+      setPresetId(detectPreset(data.provider.baseUrl)?.id ?? "custom");
     }
   }, [data]);
+
+  const preset = AI_PROVIDER_PRESETS.find((item) => item.id === presetId) ?? null;
+  const presetModels = preset && preset.id !== "custom" ? preset.models : [];
+
+  const applyPreset = (id: string) => {
+    setPresetId(id);
+    const next = AI_PROVIDER_PRESETS.find((item) => item.id === id);
+    if (!next) return;
+    if (next.baseUrl) setBaseUrl(next.baseUrl);
+    if (next.models.length > 0) setModel(next.models[0].id);
+  };
 
   const provider = data?.provider ?? null;
 
@@ -413,33 +434,83 @@ function AiProviderTab({
           ) : null}
 
           <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="ai-preset">Nhà cung cấp</Label>
+              <Select value={presetId} onValueChange={applyPreset}>
+                <SelectTrigger id="ai-preset">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {AI_PROVIDER_PRESETS.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {preset?.description ? (
+                <p className="text-[11px] text-muted-foreground">{preset.description}</p>
+              ) : null}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ai-model">Model</Label>
+              {presetModels.length > 0 ? (
+                <Select value={model} onValueChange={setModel}>
+                  <SelectTrigger id="ai-model">
+                    <SelectValue placeholder="Chọn model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {presetModels.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {item.label}
+                        {item.vision ? " · vision" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="ai-model"
+                  value={model}
+                  onChange={(event) => setModel(event.target.value)}
+                  placeholder="model-name"
+                />
+              )}
+            </div>
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="ai-base-url">Base URL (HTTPS)</Label>
               <Input
                 id="ai-base-url"
                 value={baseUrl}
-                onChange={(event) => setBaseUrl(event.target.value)}
-                placeholder="https://api.openai.com/v1"
+                onChange={(event) => {
+                  setBaseUrl(event.target.value);
+                  if (detectPreset(event.target.value)?.id !== presetId) setPresetId("custom");
+                }}
+                placeholder="https://generativelanguage.googleapis.com/v1beta/openai"
                 inputMode="url"
               />
+              {preset?.docsUrl ? (
+                <p className="text-[11px] text-muted-foreground">
+                  Tài liệu:{" "}
+                  <a
+                    href={preset.docsUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary underline-offset-2 hover:underline"
+                  >
+                    {preset.docsUrl}
+                  </a>
+                </p>
+              ) : null}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="ai-model">Model</Label>
-              <Input
-                id="ai-model"
-                value={model}
-                onChange={(event) => setModel(event.target.value)}
-                placeholder="gpt-4o-mini"
-              />
-            </div>
-            <div className="space-y-2">
+            <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="ai-api-key">API Key {provider?.hasApiKey ? "(đã lưu — để trống nếu không đổi)" : ""}</Label>
               <Input
                 id="ai-api-key"
                 type="password"
                 value={apiKey}
                 onChange={(event) => setApiKey(event.target.value)}
-                placeholder={provider?.hasApiKey ? "••••••••••••" : "sk-..."}
+                placeholder={provider?.hasApiKey ? "••••••••••••" : "AIza... / sk-..."}
                 autoComplete="off"
               />
             </div>
